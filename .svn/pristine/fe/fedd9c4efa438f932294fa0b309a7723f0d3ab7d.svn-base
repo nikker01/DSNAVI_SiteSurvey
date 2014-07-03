@@ -1,0 +1,6 @@
+package com.andvantech.dsnavi_sitesurvey;
+
+public class GlobalDataVO {
+	public static String TABLE_NAME = "";
+
+}

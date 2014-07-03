@@ -1,0 +1,29 @@
+package com.andvantech.dsnavi_sitesurvey.proxy;
+
+import java.util.Locale;
+
+import android.app.ActivityManagerNative;
+import android.app.IActivityManager;
+import android.content.res.Configuration;
+import android.os.RemoteException;
+import android.util.Log;
+
+public class LanguageProxy {
+
+	public static void setLang(Locale local) {
+
+		Log.i("SwitchLang", "local =" + local.toString());
+
+		IActivityManager iActMag = ActivityManagerNative.getDefault();
+		try {
+			Configuration config = iActMag.getConfiguration();
+			config.locale = local;
+			iActMag.updateConfiguration(config);
+			
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
+		
+	}
+
+}

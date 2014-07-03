@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/btn_setting"
+       android:title="設定"
+       android:orderInCategory="100"
+       android:showAsAction="collapseActionView" />
+    <item android:id="@+id/btn_lang"
+       android:title="語言"
+        android:orderInCategory="100"
+        android:showAsAction="collapseActionView" />
+    <item android:id="@+id/btn_aboutUs"
+       android:title="關於我"
+        android:orderInCategory="100"
+        android:showAsAction="collapseActionView" />
+</menu>

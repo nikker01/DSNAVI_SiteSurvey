@@ -1,0 +1,21 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/action_getposition"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="get my position"/>
+    
+    <item
+        android:id="@+id/action_testing_mode"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="testing mode"/>
+    
+    <item
+        android:id="@+id/action_regular_location"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="Regular Location"/>
+
+</menu>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DSNAVI-SiteSurvey</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="string_no_map">找不到地图数据</string>
+    <string name="dialog_wifi_alert_title">扫描完成</string>
+    <string name="dialog_wifi_alert_selectedtitle">选择定位路由器(AP)</string>
+    <string name="dialog_wifi_alert_updates">更新</string>
+    <string name="dialog_wifi_alert_confirm">OK</string>
+	<string name="dialog_wifi_alert_cancel">取消</string>
+	<string name="operation_mode_addpoint">增加定位点</string>
+	<string name="operation_mode_edit">編輯定位点</string>
+	<string name="operation_mode_drawline">編輯路徑</string>
+	<string name="string_error">Error</string>
+	<string name="string_scan_result">选择路由器(AP)</string>
+	<!-- Tips -->
+	<string name="string_tips_complete_bluepin">完成定位点扫描</string>
+	<string name="string_tips_complete_bluepin_content">请点一下蓝色头针并开始扫描</string>
+	<!-- Mode change -->
+	<string name="string_change_to_editmode" >开始编辑定位点</string>
+	<string name="string_change_to_addpointmode" >开始增加定位点</string>
+	<!-- Add , Delete Point state-->
+	<string name ="string_point_already_exist">定位路由器已存在，请再次确认。</string>
+	<string name ="string_delete_error_check_connect_with_server">无法连接至服务器，请检查您的服务器连接设置。</string>
+	<string name ="string_update_error_check_connect_with_server">无法连接至服务器，请检查您的服务器连接设置。</string>
+	
+	
+	<!-- Connect State -->
+	<string name="string_scan_error">无法連接至网络，请检查您的网络设置。</string>
+	<string name="string_update_error">无法連接至网络，请检查您的网络设置。</string>
+	<string name="string_delete_error">无法連接至网络，请检查您的网络设置。</string>
+	 
+	<!-- pop window item-->
+	<string name="pop_window_scan">扫描</string>
+	<string name="pop_window_delete">刪除</string>
+	<string name="pop_window_info">Info</string>
+	<string name="pop_window_info_no_content">No AP setting Information</string>
+	
+	<!-- Progress Dialog  -->
+	<string name="progress_scan">扫描中…</string>
+	<string name="progress_update">更新中…</string>
+	<string name="progress_load">载入中…</string>
+	
+	
+	<string name="getRssi0">Scan RSSI0 </string>
+    <string name="getAPMacAddress">Scan AP Mac Address</string>
+    
+    <string name="scan_complete">扫描完成</string>
+    <string name="scan_complete_confirm">OK</string>
+    <string name="scan_complete_retry">重试</string>
+    <string name="save_scan_data">Save Scan Result</string>
+    
+    <!-- String for wifi tips -->
+    <string name="wifi_alert_title">警報</string>
+    <string name="wifi_alert_msg">请开启W-iFi</string>
+    <!-- update fail mesage -->
+    <string name="update_fail_title">Message</string>
+    <string name="update_fail_msg">无法连接至网络，请检查您的网络设置。</string>
+    
+    <!-- main page -->
+    <string name="tips">提示</string>
+    <string name="tips_description">请设定扫描接收讯号强度(RSSI)的次数。</string>
+    <string name="step1">步骤1</string>
+    <string name="server_ip">服务器位址(Server IP)</string>
+    <string name="step2">步骤2</string>
+    <string name="scan_count">扫描次数</string>
+    <string name="step3">步骤3</string>
+    <string name="step3_description">请任意挑选一颗路由器, 并将您的手持装置距离该路由器约1公尺，再点一下「扫描」按钮。</string>
+    <string name="btn_scan">扫描</string>
+    <string name="btn_skip">跳过</string>
+        <!-- Language setting -->
+    
+    <string name="lang_setting">Language</string>
+        <!-- for switch lang -->
+    <string name="btn_cht">繁體中文</string>
+    <string name="btn_chs">簡体中文</string>
+    <string name="btn_english">English</string>
+    <!--about us dialog -->
+    <string name="about_us_dialog_title">关于我</string>
+    <string name="about_us_dialog_messgae">版权所有 © 2013-2014 樂倍達數位科技，保留所有权利</string> 
+    <string name="about_us_dialog_btn">关闭</string>
+</resources>
+

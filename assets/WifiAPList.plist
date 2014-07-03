@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>0</key>
+	<dict>
+		<key>APList</key>
+		<dict>
+			<key>0</key>
+			<dict>
+				<key>MacAddress</key>
+				<array>
+					<string>30:46:9a:1d:d6:9a</string>
+					<string>30:46:9a:1d:d7:02</string>
+					<string>30:46:9a:1d:d3:c2</string>
+					<string>30:46:9a:1d:d6:ae</string>
+				</array>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

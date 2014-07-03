@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:layout_gravity="center"
+    android:orientation="vertical" >
+
+    <FrameLayout
+        android:id="@+id/imageView_root"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" >
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_gravity="center"
+            android:adjustViewBounds="true"
+            android:scaleType="matrix" />
+
+        <ImageView
+            android:id="@+id/imageViewPoint"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:adjustViewBounds="true"
+            android:scaleType="matrix" />
+
+        <ImageView
+            android:id="@+id/imageViewLine"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:adjustViewBounds="true"
+            android:scaleType="matrix" />
+        
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/top_textview"
+        android:layout_width="fill_parent"
+        android:layout_height="60.0dip"
+        android:layout_alignParentTop="true"
+        android:layout_centerInParent="true"
+        android:background="@drawable/bg_dial"
+        android:paddingLeft="10dp"
+        android:paddingTop="10dp"
+        android:textSize="18dip" />
+
+    <LinearLayout
+        android:id="@+id/bottom_linear"
+        android:layout_width="fill_parent"
+        android:layout_height="50.0dip"
+        android:layout_alignParentBottom="true"
+        android:layout_gravity="bottom|right|center"
+        android:orientation="horizontal" >
+
+        <Button
+            android:id="@+id/btnEditModeSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/btn_mode"
+            android:text="@string/operation_mode_addpoint"
+            android:textColor="#FFFFFF" />
+
+        <!--
+                 <Button
+                android:id="@+id/btnSaveImage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="儲存" />
+        -->
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnAddPoint"
+        android:layout_width="80.0dip"
+        android:layout_height="80.0dip"
+        android:layout_above="@+id/bottom_linear"
+        android:layout_alignParentRight="true"
+        android:background="@drawable/btn_setpoint" />
+
+    <Button
+        android:id="@+id/btnLine"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@+id/btnAddPoint"
+        android:text="draw line mode" />
+
+    <Button
+        android:id="@+id/btnStartSiteSurvey"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/btnLine"
+        android:text="Start SiteSurvey" />
+<ImageView
+        android:id="@+id/imageview_arrow"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/top_textview"
+        android:paddingLeft="20dp"
+        android:paddingTop="20dp"
+        android:scaleType="matrix"
+        android:src="@drawable/arrow" />
+    
+
+</RelativeLayout>
