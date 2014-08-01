@@ -91,22 +91,6 @@ public class IBeaconScanReceiver extends BroadcastReceiver{
 					e.printStackTrace();
 				}
 				
-			
-				/*
-				if (point.equals(myBeaconName[0])) {
-					if (localIBeacon.getRssi() < -40)
-						rssiGroup[0].add(localIBeacon.getRssi());
-				} else if (point.equals(myBeaconName[1])) {
-					if (localIBeacon.getRssi() < -40)
-						rssiGroup[1].add(localIBeacon.getRssi());
-				} else if (point.equals(myBeaconName[2])) {
-					if (localIBeacon.getRssi() < -40)
-						rssiGroup[2].add(localIBeacon.getRssi());
-				} else if (point.equals(myBeaconName[3])) {
-					if (localIBeacon.getRssi() < -40)
-						rssiGroup[3].add(localIBeacon.getRssi());
-				} 
-				*/
 				
 			}
 

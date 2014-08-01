@@ -16,6 +16,7 @@ import com.radiusnetworks.ibeacon.RangeNotifier;
 import com.radiusnetworks.ibeacon.Region;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
 import android.text.TextUtils;
@@ -28,6 +29,7 @@ public class ApplicationController extends Application implements IBeaconConsume
 	private IBeaconManager iBeaconManager;
 	private String TAG = "ApplicationController";
 	private RequestQueue mRequestQueue;
+	//private static Context mContext;
 	
 	public void onCreate() {
 		super.onCreate();
@@ -38,6 +40,10 @@ public class ApplicationController extends Application implements IBeaconConsume
 
 	public static synchronized ApplicationController getInstance() {
 		return mInstance;
+	}
+	
+	public static String getStringByResId(int resId) {
+		return mInstance.getString(resId);
 	}
 	
 	public RequestQueue getRequestQueue() {

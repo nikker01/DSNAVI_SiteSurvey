@@ -80,6 +80,13 @@
     <string name="about_us_dialog_title">關於我</string>
     <string name="about_us_dialog_messgae">版權所有 © 2013-2014 樂倍達數位科技，保留所有權利</string> 
     <string name="about_us_dialog_btn">關閉</string>
+    
+    <string name="dialog_btn_confirm">確認</string>
+    <string name="dialog_btn_cancel">取消</string>
+    <string name="dialog_title_tip">提示</string>
+    <string name="dialog_msg_tip_skip">執行訊號掃描或略過此點</string>
+    <string name="dialog_msg_tip_nextstep">向前走一步後，按下確認進行訊號掃描。或按下skip，略過此點。</string>
+    
 </resources>
 
 

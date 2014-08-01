@@ -7,6 +7,13 @@
         android:title="get my position"/>
     
     <item
+        android:id="@+id/action_setting_step"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:title="setting"/>
+    
+    <!--  
+    <item
         android:id="@+id/action_testing_mode"
         android:orderInCategory="100"
         android:showAsAction="never"
@@ -17,5 +24,7 @@
         android:orderInCategory="100"
         android:showAsAction="never"
         android:title="Regular Location"/>
+       
+    -->
 
 </menu>

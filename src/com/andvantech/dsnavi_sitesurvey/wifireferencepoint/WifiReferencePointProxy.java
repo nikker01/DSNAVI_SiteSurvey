@@ -46,6 +46,7 @@ public class WifiReferencePointProxy {
 		values.put(WifiReferencePointVO.PATH_NUMBER, rpVO.mPathNum);
 		values.put(WifiReferencePointVO.POSITION_X, rpVO.mPosX);
 		values.put(WifiReferencePointVO.POSITION_Y, rpVO.mPosY);
+		values.put(WifiReferencePointVO.AZIMUTH, rpVO.mAzimuth);
 		for (int i = 0; i < WifiReferencePointVO.aryApList.size(); i++) {
 			String strApName = WifiReferencePointVO.aryApList.get(i).toString()
 					.replace(":", "_");
@@ -87,12 +88,13 @@ public class WifiReferencePointProxy {
 		ArrayList<HashMap> list = new ArrayList<HashMap>();
 		HashMap<String, Object> map = new HashMap<String, Object>();
 
-		column = new String[WifiReferencePointVO.aryApList.size() + 3];
-		column[0] = "_PATH_NUMBER";
-		column[1] = "_POSITION_X";
-		column[2] = "_POSITION_Y";
-		for (int idx = 3; idx < column.length; idx++) {
-			String point = WifiReferencePointVO.aryApList.get(idx - 3)
+		column = new String[WifiReferencePointVO.aryApList.size() + 4];
+		column[0] = "_AZIMUTH";
+		column[1] = "_PATH_NUMBER";
+		column[2] = "_POSITION_X";
+		column[3] = "_POSITION_Y";
+		for (int idx = 4; idx < column.length; idx++) {
+			String point = WifiReferencePointVO.aryApList.get(idx - 4)
 					.toString().replace(":", "_");
 			// column[idx] = "AP_"+WifiReferencePointVO.aryApList.get(idx-2);
 			column[idx] = "AP_" + point;
@@ -113,23 +115,22 @@ public class WifiReferencePointProxy {
 					for (int i = 0; i < c.getColumnCount(); i++) {
 						String strData = c.getString(i);
 
-						if (i == 0) {
+						if (i == 1) {
 							map.put(WifiReferencePointVO.PATH_NUMBER, strData);
-						} else if (i == 1) {
-							map.put(WifiReferencePointVO.POSITION_X, strData);
 						} else if (i == 2) {
+							map.put(WifiReferencePointVO.POSITION_X, strData);
+						} else if (i == 3) {
 							map.put(WifiReferencePointVO.POSITION_Y, strData);
-						}
+						} 
 
-						if (i >= 3) {
+						if (i >= 4) {
 							String columName = c.getColumnName(i);
-							for (int dataListIndex = 0; dataListIndex < scanData
-									.size(); dataListIndex++) {
+							for (int dataListIndex = 0; dataListIndex < scanData.size(); dataListIndex++) {
 								if (columName.equals(scanData
 										.get(dataListIndex).get("AP_BSSID"))) {
-									currentFingerPrints[i - 3] = (Integer) scanData
+									currentFingerPrints[i - 4] = (Integer) scanData
 											.get(dataListIndex).get("AP_RSSI");
-									dbFingerPrints[i - 3] = Integer
+									dbFingerPrints[i - 4] = Integer
 											.parseInt(strData);
 								}
 							}
@@ -146,11 +147,11 @@ public class WifiReferencePointProxy {
 
 				//findPointsInLine(list);
 				//queryReferencePointInLine();
-				
+
 				 c.close(); 
 				 dbHelper.close(); 
 				 db.close();
-				 
+
 
 			}
 
@@ -160,37 +161,39 @@ public class WifiReferencePointProxy {
 
 		return list;
 	}
-	
+
 	public ArrayList<HashMap> getRegularCoodinate() {
 		return regularDataList;
 	}
 
-	private void queryReferencePointInLine() {
-		// TODO Auto-generated method stub
-		Log.i(TAG, "queryReferencePointInLine BEGIN");
-
-		int[] dbFingerPrints = new int[scanData.size()];
-		int[] currentFingerPrints = new int[scanData.size()];
+	public float getAzimuthValue(float posX, float posY) {
+		Log.i(TAG, "getAzimuthValue posx = " +posX + " posy =" +posY);
+		float mAzimuthValue = 0;
 		
+		float[] currentPos = new float[]{posX, posY};
+		float[] dbPos = new float[]{0, 0};
+		
+		ArrayList<HashMap> list = new ArrayList<HashMap>();
 		HashMap<String, Object> map = new HashMap<String, Object>();
-
-		column = new String[WifiReferencePointVO.aryApList.size() + 3];
-		column[0] = "_PATH_NUMBER";
-		column[1] = "_POSITION_X";
-		column[2] = "_POSITION_Y";
-		for (int idx = 3; idx < column.length; idx++) {
-			String point = WifiReferencePointVO.aryApList.get(idx - 3)
+		
+		column = new String[WifiReferencePointVO.aryApList.size() + 4];
+		column[0] = "_AZIMUTH";
+		column[1] = "_PATH_NUMBER";
+		column[2] = "_POSITION_X";
+		column[3] = "_POSITION_Y";
+		for (int idx = 4; idx < column.length; idx++) {
+			String point = WifiReferencePointVO.aryApList.get(idx - 4)
 					.toString().replace(":", "_");
 			// column[idx] = "AP_"+WifiReferencePointVO.aryApList.get(idx-2);
 			column[idx] = "AP_" + point;
 		}
 
-
 		String qTableName = WifiReferencePointVO.TABLE_NAME;
 		try {
+
 			Cursor c = null;
-			c = db.query(qTableName, column, "_PATH_NUMBER="
-					+nearestLine, null, null, null, null);
+			c = db.query(qTableName, column, "_POSITION_X="
+					+ WifiReferencePointVO.POSITION_X, null, null, null, null);
 
 			if (c.getCount() >= 1) {
 				for (int cIndex = 0; cIndex < c.getCount(); cIndex++) {
@@ -198,100 +201,62 @@ public class WifiReferencePointProxy {
 					map = new HashMap<String, Object>();
 					for (int i = 0; i < c.getColumnCount(); i++) {
 						String strData = c.getString(i);
-
-						if (i == 0) {
-							map.put(WifiReferencePointVO.PATH_NUMBER, strData);
-						} else if (i == 1) {
-							map.put(WifiReferencePointVO.POSITION_X, strData);
+						
+						if(i == 0) {
+							map.put(WifiReferencePointVO.AZIMUTH, strData);
 						} else if (i == 2) {
+							map.put(WifiReferencePointVO.POSITION_X, strData);
+							dbPos[0] = Float.parseFloat(strData);
+						} else if (i == 3) {
 							map.put(WifiReferencePointVO.POSITION_Y, strData);
-						}
-
-						if (i >= 3) {
-							String columName = c.getColumnName(i);
-							for (int dataListIndex = 0; dataListIndex < scanData
-									.size(); dataListIndex++) {
-								if (columName.equals(scanData
-										.get(dataListIndex).get("AP_BSSID"))) {
-									currentFingerPrints[i - 3] = (Integer) scanData
-											.get(dataListIndex).get("AP_RSSI");
-									dbFingerPrints[i - 3] = Integer
-											.parseInt(strData);
-								}
-							}
-						}
+							dbPos[1] = Float.parseFloat(strData);
+						} 
 
 					}
 
 					int distance = 0;
-					distance = calculateDistance(currentFingerPrints,
-							dbFingerPrints);
+					distance = findNearestAzimuthValue(currentPos, dbPos);
 					map.put(WifiReferencePointVO.DISTANCE, distance);
-					regularDataList.add(map);
+					list.add(map);
 				}
 
-			}
+				//findPointsInLine(list);
+				//queryReferencePointInLine();
 
+				 c.close(); 
+				 dbHelper.close(); 
+				 db.close();
+
+
+			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-	}
-
-	private void findPointsInLine(ArrayList<HashMap> list) {
-		// TODO Auto-generated method stub
-		Log.i(TAG, "findPointsInLine BEGIN");
-
+		
 		Collections.sort(list, new Comparator<HashMap>() {
 			@Override
 			public int compare(HashMap lhs, HashMap rhs) {
 				// TODO Auto-generated method stub
-				return (Integer) rhs.get(ReferencePointVO.DISTANCE) < (Integer) lhs
-						.get(ReferencePointVO.DISTANCE) ? 1 : -1;
+				
+				return (Integer) rhs.get(WifiReferencePointVO.DISTANCE) == (Integer) lhs
+						.get(WifiReferencePointVO.DISTANCE) ? 0 :
+							((Integer) rhs.get(WifiReferencePointVO.DISTANCE) < (Integer) lhs
+									.get(WifiReferencePointVO.DISTANCE) ? 1 : -1);
 			}
 		});
-
-		ArrayList<String> pathNumber1 = new ArrayList<String>();
-		ArrayList<String> pathNumber2 = new ArrayList<String>();
-		ArrayList<String> pathNumber3 = new ArrayList<String>();
-
-		String[] aryPathNumInNearestK = new String[] {
-				(String) list.get(0).get(WifiReferencePointVO.PATH_NUMBER),
-				(String) list.get(1).get(WifiReferencePointVO.PATH_NUMBER),
-				(String) list.get(2).get(WifiReferencePointVO.PATH_NUMBER) };
-
-		pathNumber1.add(aryPathNumInNearestK[0]);
-		if (aryPathNumInNearestK[1].equals(aryPathNumInNearestK[0])) {
-			pathNumber1.add(aryPathNumInNearestK[1]);
-		} else {
-			pathNumber2.add(aryPathNumInNearestK[1]);
-		}
-
-		if (aryPathNumInNearestK[2].equals(aryPathNumInNearestK[0])) {
-			pathNumber1.add(aryPathNumInNearestK[1]);
-		} else if (aryPathNumInNearestK[2].equals(aryPathNumInNearestK[1])
-				&& !aryPathNumInNearestK[2].equals(aryPathNumInNearestK[0])) {
-			pathNumber2.add(aryPathNumInNearestK[1]);
-		} else {
-			pathNumber3.add(aryPathNumInNearestK[1]);
-		}
-
-		int[] aryPathNumberArraySize = new int[] { pathNumber1.size(),
-				pathNumber2.size(), pathNumber3.size() };
-
-		if (aryPathNumberArraySize[0] >= 2) {
-			nearestLine = aryPathNumInNearestK[0];
-		}
-		if (aryPathNumberArraySize[1] >= 2) {
-			nearestLine = aryPathNumInNearestK[1];
-		}
-		if (aryPathNumberArraySize[0] == 1 && aryPathNumberArraySize[1] == 1
-				&& aryPathNumberArraySize[2] == 1) {
-			nearestLine = aryPathNumInNearestK[0];
-		}
-
-		Log.i(TAG, "findPointsInLine END, nearestLine = L" +nearestLine);
+		
+		float value = Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.AZIMUTH));
+		
+		return value;
 	}
 
+	private int findNearestAzimuthValue(float[] currentPos, float[] dbPos) {
+		// TODO Auto-generated method stub
+		
+		int distance = (int) (Math.pow((currentPos[0] - dbPos[0]), 2) + 
+				Math.pow((currentPos[1] - dbPos[1]), 2));
+		
+		return distance;
+	}
 }

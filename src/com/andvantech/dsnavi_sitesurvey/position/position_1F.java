@@ -7,9 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -25,7 +27,9 @@ import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 
 import com.andvantech.dsnavi_sitesurvey.APInfo;
+import com.andvantech.dsnavi_sitesurvey.BaseAlertView;
 import com.andvantech.dsnavi_sitesurvey.BaseRssiScan;
+import com.andvantech.dsnavi_sitesurvey.BayesClassifier;
 import com.andvantech.dsnavi_sitesurvey.GlobalDataVO;
 import com.andvantech.dsnavi_sitesurvey.PointAccessDBHelper;
 import com.andvantech.dsnavi_sitesurvey.PointAccessDataVO;
@@ -38,6 +42,7 @@ import com.andvantech.dsnavi_sitesurvey.referencepoints.ReferencePointProxy;
 import com.andvantech.dsnavi_sitesurvey.referencepoints.ReferencePointVO;
 import com.andvantech.dsnavi_sitesurvey.wifireferencepoint.WifiReferencePointProxy;
 import com.andvantech.dsnavi_sitesurvey.wifireferencepoint.WifiReferencePointVO;
+import com.doubleservice.knntestingmode.TestingModeProxy;
 import com.longevitysoft.android.xml.plist.PListXMLHandler;
 import com.longevitysoft.android.xml.plist.PListXMLParser;
 import com.longevitysoft.android.xml.plist.domain.Array;
@@ -96,6 +101,7 @@ import android.widget.Toast;
 public class position_1F extends Activity implements SensorEventListener {
 
 	private String TAG = "position_1F";
+	private final static int MESSAGE_GET_POSITION = 2000;
 
 	public String saveImgIndex;
 
@@ -161,19 +167,25 @@ public class position_1F extends Activity implements SensorEventListener {
 
 	// added By Henry
 	private ProgressDialog pd;
-	
+
 	private int mPathNum = 0;
-	private String mPath;
-	private boolean bIsToRegular = false;
-	private int[] aryRssiToRegularLocation;
+
+	private int[] scannedRssi;
+	private String testingModeStartTime;
+	private String testingModeEndTime;
+	
+	private int mEveryStep = 0;
+	NavigationSensor navSensor;// = new NavigationSensor(this);
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
+		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 		setContentView(R.layout.position1f);
+		
 
-		//ApplicationController.getInstance().onIBeaconServiceStart();
+		// ApplicationController.getInstance().onIBeaconServiceStart();
 
 		dm = new DisplayMetrics();
 		getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -213,6 +225,7 @@ public class position_1F extends Activity implements SensorEventListener {
 		// initActionBar();
 		initMap();
 		initBeaconData();
+		BaseAlertView alert = new BaseAlertView(this, GlobalDataVO.STEP_SETTING);
 	}
 
 	private void initBeaconData() {
@@ -225,8 +238,7 @@ public class position_1F extends Activity implements SensorEventListener {
 				PListXMLParser parser = new PListXMLParser();
 				PListXMLHandler plistHandler = new PListXMLHandler();
 				parser.setHandler(plistHandler);
-				
-				
+
 				try {
 					parser.parse(getAssets().open("WifiAPList.plist"));
 				} catch (IllegalStateException e) {
@@ -234,18 +246,19 @@ public class position_1F extends Activity implements SensorEventListener {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				
+
 				PList actualPList = ((PListXMLHandler) parser.getHandler())
 						.getPlist();
 				Dict root = (Dict) actualPList.getRootElement();
 				Map<String, PListObject> list = root.getConfigMap();
-				
+
 				for (int i = 0; i < list.keySet().size(); i++) {
 					Dict provinceRoot = (Dict) list.get(String.valueOf(i));
 					Map<String, PListObject> area = provinceRoot.getConfigMap();
 
 					String areaName = area.keySet().iterator().next();
 					Log.i("Plist Parser", "Area Name = " + areaName);
+					
 
 					Dict pointsRoot = (Dict) area.get(areaName);
 					Map<String, PListObject> points = pointsRoot.getConfigMap();
@@ -257,23 +270,27 @@ public class position_1F extends Activity implements SensorEventListener {
 						Log.i("Plist Parser", "pointName");
 						Array districts = city.getConfigurationArray(pointName);
 						WifiReferencePointVO.ApListSize = districts.size();
-						
+
 						for (int k = 0; k < districts.size(); k++) {
 							com.longevitysoft.android.xml.plist.domain.String district = (com.longevitysoft.android.xml.plist.domain.String) districts
 									.get(k);
 							Log.i("Plist Parser",
 									"points = " + district.getValue());
-							WifiReferencePointVO.aryApList.add(district.getValue());
-							String strReplace = district.getValue().replace(":", "_");
+							WifiReferencePointVO.aryApList.add(district
+									.getValue());
+							String strReplace = district.getValue().replace(
+									":", "_");
 							
-							if( k== districts.size() - 1) {
-								WifiReferencePointVO.CREATE_TABLE = WifiReferencePointVO.CREATE_TABLE + 
-										"AP_" + strReplace + " TEXT " + ")";
+							if (k == districts.size() - 1) {
+								WifiReferencePointVO.CREATE_TABLE = WifiReferencePointVO.CREATE_TABLE
+										+ "AP_" + strReplace + " TEXT "  + ")";
 							} else {
-								WifiReferencePointVO.CREATE_TABLE = WifiReferencePointVO.CREATE_TABLE + 
-										"AP_" + strReplace + " TEXT, ";
+								WifiReferencePointVO.CREATE_TABLE = WifiReferencePointVO.CREATE_TABLE
+										+ "AP_" + strReplace + " TEXT, " ;
 							}
+							
 						}
+				
 					}
 
 				}
@@ -287,8 +304,11 @@ public class position_1F extends Activity implements SensorEventListener {
 		@Override
 		public void handleMessage(Message msg) {
 			pd.dismiss();
-			WifiReferencePointProxy proxy = new WifiReferencePointProxy(position_1F.this);
-			//ReferencePointProxy proxy = new ReferencePointProxy(position_1F.this);
+			navSensor = new NavigationSensor(position_1F.this);
+			WifiReferencePointProxy proxy = new WifiReferencePointProxy(
+					position_1F.this);
+			// ReferencePointProxy proxy = new
+			// ReferencePointProxy(position_1F.this);
 		}
 	};
 
@@ -326,7 +346,7 @@ public class position_1F extends Activity implements SensorEventListener {
 		btnStartSiteSurvey.setEnabled(false);
 		btnStartSiteSurvey.setVisibility(View.INVISIBLE);
 		ImageViewHelper.imageViewPoint.setVisibility(View.VISIBLE);
-		this.imageViewArrow.setVisibility(View.GONE);
+		//this.imageViewArrow.setVisibility(View.GONE);
 		nextmode = drawLineMode;
 		ImageViewHelper.operationMode = nextmode;
 		btnEditModeSwitch.setText(R.string.operation_mode_drawline);
@@ -342,7 +362,7 @@ public class position_1F extends Activity implements SensorEventListener {
 		btnStartSiteSurvey.setEnabled(true);
 		btnStartSiteSurvey.setVisibility(View.VISIBLE);
 		ImageViewHelper.imageViewPoint.setVisibility(View.VISIBLE);
-		this.imageViewArrow.setVisibility(View.GONE);
+		//this.imageViewArrow.setVisibility(View.GONE);
 		nextmode = editMode;
 		ImageViewHelper.operationMode = nextmode;
 		btnEditModeSwitch.setText(R.string.operation_mode_edit);
@@ -387,8 +407,9 @@ public class position_1F extends Activity implements SensorEventListener {
 				imageViewHelper.imageViewPoint
 						.setImageMatrix(imageViewHelper.matrixPoint);
 				// mHandlerTime.postDelayed(timerRun,3000);
-				scanning = true;
-				startScanning();
+				showSiteSurveyAlert();
+				//scanning = true;
+				//startScanning();
 				break;
 
 			case R.id.btnEditModeSwitch:
@@ -485,13 +506,15 @@ public class position_1F extends Activity implements SensorEventListener {
 			// int[] rssi = new int[]{-55, -60, -70};
 			// setCurrentFingerPrint(rssi);
 			break;
-			
+		
+		case R.id.action_setting_step:
+			BaseAlertView alert = new BaseAlertView(this, GlobalDataVO.STEP_SETTING);
+			break;
+			/*
 		case R.id.action_testing_mode:
+			startTestingMode();
 			break;
-			
-		case R.id.action_regular_location:
-			regularLocation();
-			break;
+			*/
 		}
 
 		return true;
@@ -680,7 +703,8 @@ public class position_1F extends Activity implements SensorEventListener {
 	}
 
 	private void initMap() {
-		File f = new File("/sdcard/Download/office_v3_ReferencePoints.jpg");
+		//File f = new File("/sdcard/Download/office_v3_ReferencePoints.jpg");
+		File f = new File("/sdcard/Download/map_advantech.png");
 		Uri uri = Uri.fromFile(f);
 		if (uri != null) {
 			initImageview(uri);
@@ -833,64 +857,38 @@ public class position_1F extends Activity implements SensorEventListener {
 	};
 
 	public void startScanning() {
-		/*
-		 * if (receiver == null) { receiver = new WifiScanReceiver(this);
-		 * 
-		 * registerReceiver(receiver, new IntentFilter(
-		 * WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)); } else {
-		 * unregisterReceiver(receiver);
-		 * 
-		 * receiver = new WifiScanReceiver(this);
-		 * 
-		 * registerReceiver(receiver, new IntentFilter(
-		 * WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)); }
-		 * wiFiManager.startScan();
-		 */
-		
+
 		wifiReceiver = new WifiFingerPrintReceiver(this, 0);
 		registerReceiver(wifiReceiver, new IntentFilter(
-				 WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+				WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
 		wiFiManager.startScan();
-			
-/*
-		iReceiver = new IBeaconScanReceiver(this, 0);
-		IntentFilter mFilter = new IntentFilter("onIBeaconServiceConnect");
-		registerReceiver(iReceiver, new IntentFilter(mFilter));
-*/
+
 	}
 
 	private void scanningCurrentFingerPrint() {
-		
-		/*
-		iReceiver = new IBeaconScanReceiver(this, 1);
-		IntentFilter mFilter = new IntentFilter("onIBeaconServiceConnect");
-		registerReceiver(iReceiver, new IntentFilter(mFilter));
-		*/
-		
 		wifiReceiver = new WifiFingerPrintReceiver(this, 1);
 		registerReceiver(wifiReceiver, new IntentFilter(
-				 WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+				WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
 		wiFiManager.startScan();
 	}
 
 	public void setCurrentFingerPrint(int[] rssi) {
 		Log.i(TAG, "currentFingerPrint BEGIN");
-		
+
 		String rssiRes = "Current RSSI:";
-		for(int i = 0; i<rssi.length; i++) {
-			rssiRes = rssiRes + "\nBeacon" + i + " rssi = " +rssi[i];
+		for (int i = 0; i < rssi.length; i++) {
+			rssiRes = rssiRes + "\nBeacon" + i + " rssi = " + rssi[i];
 		}
-		
+
 		Toast.makeText(position_1F.this, rssiRes, Toast.LENGTH_LONG).show();
 
 		if (iReceiver != null)
 			unregisterReceiver(iReceiver);
 
-		
 		ArrayList<HashMap> list = new ArrayList<HashMap>();
 		final ReferencePointProxy proxy = new ReferencePointProxy(this);
 		list = proxy.queryReferencePointDis(rssi);
-		//list = proxy.getRegularCoodinate();
+		// list = proxy.getRegularCoodinate();
 
 		Collections.sort(list, new Comparator<HashMap>() {
 			@Override
@@ -902,6 +900,7 @@ public class position_1F extends Activity implements SensorEventListener {
 		});
 		
 		
+
 		float newPositionX = (Float.parseFloat((String) list.get(0).get(
 				ReferencePointVO.POSITION_X))
 				+ Float.parseFloat((String) list.get(1).get(
@@ -940,13 +939,13 @@ public class position_1F extends Activity implements SensorEventListener {
 		rpVO.mPosY = Float.toString(newPositionY);
 		rpVO.beaconArray = rssi;
 		/*
-		rpVO.mBeaconA_rssi = Integer.toString(rssi[0]);
-		rpVO.mBeaconB_rssi = Integer.toString(rssi[1]);
-		rpVO.mBeaconC_rssi = Integer.toString(rssi[2]);
-		rpVO.mBeaconD_rssi = Integer.toString(rssi[3]);
-		*/
+		 * rpVO.mBeaconA_rssi = Integer.toString(rssi[0]); rpVO.mBeaconB_rssi =
+		 * Integer.toString(rssi[1]); rpVO.mBeaconC_rssi =
+		 * Integer.toString(rssi[2]); rpVO.mBeaconD_rssi =
+		 * Integer.toString(rssi[3]);
+		 */
 		proxy.initDB();
-		
+
 		Builder alertDialog = new AlertDialog.Builder(this);
 		alertDialog.setTitle("Tips");
 		alertDialog.setMessage("Want to added to fingerprint DB?");
@@ -967,14 +966,10 @@ public class position_1F extends Activity implements SensorEventListener {
 				});
 
 		alertDialog.setCancelable(false);
-		alertDialog.show();
-		
-		//proxy.setReferencePoint(rpVO);
+		//alertDialog.show();
 
-	}
+		// proxy.setReferencePoint(rpVO);
 
-	private void getMyLocation() {
-		// TODO Auto-generated method stub‘’‘’‘’‘
 	}
 
 	public void setBeaconData(final int[] rssi) {
@@ -994,14 +989,14 @@ public class position_1F extends Activity implements SensorEventListener {
 				+ ", pointY: " + getRssiPointXY[1]);
 
 		String res = "";
-		for(int i = 0; i<rssi.length; i++) {
-			res = res + "\nBeacon" + i + " rssi = " +rssi[i];
+		for (int i = 0; i < rssi.length; i++) {
+			res = res + "\nBeacon" + i + " rssi = " + rssi[i];
 		}
-		
+
 		/*
-		String res = "BeaconA rssi = " + rssi[0] + " BeaconB rssi = " + rssi[1]
-				+ " BeaconC rssi =" + rssi[2] + " BeaconD rssi = " + rssi[3];
-				*/
+		 * String res = "BeaconA rssi = " + rssi[0] + " BeaconB rssi = " +
+		 * rssi[1] + " BeaconC rssi =" + rssi[2] + " BeaconD rssi = " + rssi[3];
+		 */
 
 		Builder alertDialog = new AlertDialog.Builder(this);
 		alertDialog.setTitle("Tips");
@@ -1035,11 +1030,11 @@ public class position_1F extends Activity implements SensorEventListener {
 		rpVO.mPosY = Float.toString(posY);
 		rpVO.beaconArray = rssi;
 		/*
-		rpVO.mBeaconA_rssi = Integer.toString(rssi[0]);
-		rpVO.mBeaconB_rssi = Integer.toString(rssi[1]);
-		rpVO.mBeaconC_rssi = Integer.toString(rssi[2]);
-		rpVO.mBeaconD_rssi = Integer.toString(rssi[3]);
-*/
+		 * rpVO.mBeaconA_rssi = Integer.toString(rssi[0]); rpVO.mBeaconB_rssi =
+		 * Integer.toString(rssi[1]); rpVO.mBeaconC_rssi =
+		 * Integer.toString(rssi[2]); rpVO.mBeaconD_rssi =
+		 * Integer.toString(rssi[3]);
+		 */
 		ReferencePointProxy proxy = new ReferencePointProxy(this);
 		proxy.setReferencePoint(rpVO);
 
@@ -1049,6 +1044,9 @@ public class position_1F extends Activity implements SensorEventListener {
 
 	private void nextStepTip() {
 		// TODO Auto-generated method stub
+		
+		BaseAlertView alert = new BaseAlertView(position_1F.this, GlobalDataVO.NOTIFICATION_NEXTSTEP);
+		/*
 		Builder alertDialog = new AlertDialog.Builder(this);
 		alertDialog.setTitle("Tips");
 		alertDialog.setMessage("1 step forward, and click ok");
@@ -1057,6 +1055,7 @@ public class position_1F extends Activity implements SensorEventListener {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						// TODO Auto-generated method stub
+						actionBarProgress(true);
 						siteSurveyMoving();
 					}
 				});
@@ -1070,10 +1069,10 @@ public class position_1F extends Activity implements SensorEventListener {
 
 		alertDialog.setCancelable(false);
 		alertDialog.show();
+		*/
 	}
 
 	public void siteSurveyMoving() {
-
 		Log.i(TAG, "siteSurveyMoving BEGIN");
 
 		float[] linePoint = new float[4];
@@ -1085,19 +1084,12 @@ public class position_1F extends Activity implements SensorEventListener {
 					+ (linePoint[3] - linePoint[1])
 					* (linePoint[3] - linePoint[1])));
 
-			float moveX = 120 * (linePoint[2] - linePoint[0]) / lineLength;
-			float moveY = 120 * (linePoint[3] - linePoint[1]) / lineLength;
+			float moveX = getEveryStep() * (linePoint[2] - linePoint[0]) / lineLength;
+			float moveY = getEveryStep() * (linePoint[3] - linePoint[1]) / lineLength;
 			ImageViewHelper.matrixPoint.postTranslate(moveX, moveY);
 			ImageViewHelper.imageViewPoint
 					.setImageMatrix(ImageViewHelper.matrixPoint);
 
-			/*
-			 * float[] getRssiPointXY = new float[2]; getRssiPointXY =
-			 * imageViewHelper.calNewPointPixel(imageViewHelper.matrixPoint);
-			 * Log.i("siteSurveyMoving",
-			 * "Current Position pointX: "+getRssiPointXY
-			 * [0]+", pointY: "+getRssiPointXY[1]);
-			 */
 			float[] currentPointXY = imageViewHelper
 					.calNewPointPixel(ImageViewHelper.matrixPoint);
 			Log.i("siteSurveyMoving", "currentPointXY X = " + currentPointXY[0]
@@ -1110,6 +1102,7 @@ public class position_1F extends Activity implements SensorEventListener {
 							* (currentPointXY[1] - linePoint[1])));
 
 			if (movingDist > lineLength) {
+				Log.i(TAG, "siteSurveyMoving, movingDist > lineLength, dif = " +(movingDist-lineLength));
 				index_line++;
 				float[] arrayPointM = new float[9];
 				ImageViewHelper.matrixPoint.getValues(arrayPointM);
@@ -1129,36 +1122,40 @@ public class position_1F extends Activity implements SensorEventListener {
 				arrayPointM[5] = transPointPixelToTrans(linePoint[2],
 						linePoint[3])[1] - pointCenterY;
 				ImageViewHelper.matrixPoint.setValues(arrayPointM);
+				
+				if (index_line >= ImageViewHelper.arrayPxLine.size()) {
+					scanning = false;
+				}
+				
+			} else {
+				nextStepTip();
+				//showSiteSurveyAlert();
 			}
-			startScanning();
-
+			//startScanning();
+			
 		}
 
-		if (index_line >= ImageViewHelper.arrayPxLine.size()) {
-
-			// if (iReceiver != null)
-			// unregisterReceiver(iReceiver);
-
-			// mHandlerTime.removeCallbacks(timerRun);
-			// unregisterReceiver(iReceiver);
-			// iReceiver = null;
-			scanning = false;
-		}
+		
 
 	}
-	
-	///////////////////////////////////////////////////////////////
+
+	// /////////////////////////////////////////////////////////////
 	//
 	// Added By Henry
 	//
-	////////////////////////////////////////////////////////////////
-	
-	public void setSiteSurveyRssiData(final int rssi[]) {
+	// //////////////////////////////////////////////////////////////
+
+	public void setSiteSurveyRssiData(final int rssi[], boolean isDone) {
 		Log.i(TAG, "setSiteSurveyRssiData BEGIN");
+
+		if(isDone) {
+			if (wifiReceiver != null)
+				unregisterReceiver(wifiReceiver);
+		}
 		
-		if (wifiReceiver != null)
-			unregisterReceiver(wifiReceiver);
 		
+		float azimuth = navSensor.getOrientationAzimuth();
+
 		float[] getRssiPointXY = new float[2];
 		getRssiPointXY = imageViewHelper
 				.calNewPointPixel(imageViewHelper.matrixPoint);
@@ -1166,68 +1163,64 @@ public class position_1F extends Activity implements SensorEventListener {
 		final float posX = getRssiPointXY[0];
 		final float posY = getRssiPointXY[1];
 
-		Log.i("setSiteSurveyRssiData", "Current Position pointX: " + getRssiPointXY[0]
-				+ ", pointY: " + getRssiPointXY[1]);
+		Log.i("setSiteSurveyRssiData", "Current Position pointX: "
+				+ getRssiPointXY[0] + ", pointY: " + getRssiPointXY[1] + " Orientation Value =" +azimuth);
 
 		String res = "";
-		for(int i = 0; i<rssi.length; i++) {
-			res = res + "AP_" + i + " rssi = " +rssi[i] + "\n";
+		for (int i = 0; i < rssi.length; i++) {
+			res = res + "AP_" + i + " rssi = " + rssi[i] + "\n";
 		}
 		
-		Builder alertDialog = new AlertDialog.Builder(this);
-		alertDialog.setTitle("Tips");
-		alertDialog.setMessage(res);
-		alertDialog.setPositiveButton("ok",
-				new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						// TODO Auto-generated method stub
-						//saveReferencePoint(posX, posY, rssi);
-						saveSiteSurveyRssiData(posX, posY, rssi);
-					}
-				});
-		alertDialog.setNegativeButton("cancel",
-				new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						// TODO Auto-generated method stub
-						startScanning();
-					}
-				});
-
-		alertDialog.setCancelable(false);
-		alertDialog.show();
+		if(isDone)
+			Toast.makeText(this, res, Toast.LENGTH_LONG).show();
+		
+		saveSiteSurveyRssiData(posX, posY, rssi, isDone, azimuth);
 	}
 
-	protected void saveSiteSurveyRssiData(float posX, float posY, int[] rssi) {
+	protected void saveSiteSurveyRssiData(float posX, float posY, int[] rssi, boolean isDone, float azimuth) {
 		// TODO Auto-generated method stub
 		WifiReferencePointVO rpVO = new WifiReferencePointVO();
 		rpVO.mPosX = Float.toString(posX);
 		rpVO.mPosY = Float.toString(posY);
 		rpVO.rssiArray = rssi;
-		rpVO.mPathNum =Integer.toString(this.mPathNum);
-		
+		rpVO.mPathNum = Integer.toString(this.mPathNum);
+		rpVO.mAzimuth = Float.toString(azimuth);
+
 		WifiReferencePointProxy proxy = new WifiReferencePointProxy(this);
 		proxy.setReferencePoint(rpVO);
-		
-		if (scanning)
-			nextStepTip();
+
+		if (scanning) {
+			if(isDone) {
+				actionBarProgress(false);
+				siteSurveyMoving();
+				//nextStepTip();
+			}
+			
+		} else if(!scanning) {
+			if(isDone) {
+				Toast.makeText(this, "finish site-survey", Toast.LENGTH_LONG).show();
+				actionBarProgress(false);
+			}
+		}
+				
 	}
 
-	public void setCurrentLocation(float posX, float posY, final int rssi[], String mLine) {
+	public void setCurrentLocation(float posX, float posY, final int rssi[]) {
 		// TODO Auto-generated method stub
 		Log.i(TAG, "setCurrentLocation BEGIN");
-		
+
 		if (wifiReceiver != null)
 			unregisterReceiver(wifiReceiver);
-		
+
 		String strToastRssiMsg = "";
-		for(int i = 0; i<rssi.length; i++) {
-			strToastRssiMsg = strToastRssiMsg + "RSSI"+i+ " = " +rssi[i] + "\n";
+		for (int i = 0; i < rssi.length; i++) {
+			strToastRssiMsg = strToastRssiMsg + "RSSI" + i + " = " + rssi[i]
+					+ "\n";
 		}
-		
-		Toast.makeText(position_1F.this, strToastRssiMsg, Toast.LENGTH_LONG).show();
-		
+
+		Toast.makeText(position_1F.this, strToastRssiMsg, Toast.LENGTH_LONG)
+				.show();
+
 		float[] arrayPointM = new float[9];
 		imageViewHelper.matrixPoint.getValues(arrayPointM);
 		float[] pointXYTrans = this.transPointPixelToTrans(posX, posY);
@@ -1239,16 +1232,16 @@ public class position_1F extends Activity implements SensorEventListener {
 		imageViewHelper.matrixPoint.reset();
 		imageViewHelper.matrixPoint.setValues(arrayPointM);
 		imageViewPoint.setImageMatrix(imageViewHelper.matrixPoint);
-		
+
 		final WifiReferencePointVO rpVO = new WifiReferencePointVO();
 		rpVO.mPosX = Float.toString(posX);
 		rpVO.mPosY = Float.toString(posY);
-		rpVO.mPathNum = mLine;
 		rpVO.rssiArray = rssi;
-		
-		final WifiReferencePointProxy wifiProxy = new WifiReferencePointProxy(this);
+
+		final WifiReferencePointProxy wifiProxy = new WifiReferencePointProxy(
+				this);
 		wifiProxy.initDB();
-		
+
 		Builder alertDialog = new AlertDialog.Builder(this);
 		alertDialog.setTitle("Tips");
 		alertDialog.setMessage("Want to added to fingerprint DB?");
@@ -1267,45 +1260,174 @@ public class position_1F extends Activity implements SensorEventListener {
 						// TODO Auto-generated method stub
 					}
 				});
-		alertDialog.setNeutralButton("Regular", new DialogInterface.OnClickListener() {
+
+		alertDialog.setCancelable(false);
+		alertDialog.show();
+
+	}
+	
+	public void setCurrentLocationRssi(int rssi[], final ArrayList<HashMap> scanDataList) {
+		Log.i(TAG, "setCurrentLocationRssi BEGIN");
+		
+		if (wifiReceiver != null)
+			unregisterReceiver(wifiReceiver);
+		
+		new Thread() {
+			@Override
+			public void run() {
+				
+				WifiReferencePointProxy proxy = new WifiReferencePointProxy(position_1F.this);
+				proxy.initDB();
+				ArrayList<HashMap> list = new ArrayList<HashMap>();
+				list = proxy.queryReferencePointDis(scanDataList);
+				
+				Collections.sort(list, new Comparator<HashMap>() {
+					@Override
+					public int compare(HashMap lhs, HashMap rhs) {
+						// TODO Auto-generated method stub
+						
+						return (Integer) rhs.get(WifiReferencePointVO.DISTANCE) == (Integer) lhs
+								.get(WifiReferencePointVO.DISTANCE) ? 0 :
+									((Integer) rhs.get(WifiReferencePointVO.DISTANCE) < (Integer) lhs
+											.get(WifiReferencePointVO.DISTANCE) ? 1 : -1);
+					}
+				});
+				
+				float newPositionX = (
+						Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.POSITION_X)) +
+						Float.parseFloat((String) list.get(1).get(WifiReferencePointVO.POSITION_X)) + 
+						Float.parseFloat((String) list.get(2).get(WifiReferencePointVO.POSITION_X)) 
+						) / 3;
+				float newPositionY = (
+						Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.POSITION_Y)) + 
+						Float.parseFloat((String) list.get(1).get(WifiReferencePointVO.POSITION_Y)) + 
+						Float.parseFloat((String) list.get(2).get(WifiReferencePointVO.POSITION_Y))
+						) / 3;
+				
+				proxy.initDB();
+				float azimuthValue = proxy.getAzimuthValue(newPositionX, newPositionY);
+				
+				float[] newPositionXY = new float[]{newPositionX, newPositionY};
+				
+				Message msg = new Message();
+				msg.what = MESSAGE_GET_POSITION;
+				msg.obj = newPositionXY;
+
+				posHandler.sendMessage(msg);
+			}
+
+		}.start();
+	}
+	
+	Handler posHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			switch(msg.what) {
+			case MESSAGE_GET_POSITION:
+				float[] positionXY = (float[])msg.obj;
+				String strToastRssiMsg = "";
+				strToastRssiMsg = "Location X = " +positionXY[0] + " Y =" +positionXY[1];
+				/*
+				for (int i = 0; i < scannedRssi.length; i++) {
+					strToastRssiMsg = strToastRssiMsg + "RSSI" + i + " = " + scannedRssi[i]
+							+ "\n";
+				}
+				*/
+				
+				Toast.makeText(position_1F.this, strToastRssiMsg, Toast.LENGTH_LONG)
+				.show();
+				
+				float[] arrayPointM = new float[9];
+				imageViewHelper.matrixPoint.getValues(arrayPointM);
+				float[] pointXYTrans = transPointPixelToTrans(positionXY[0], positionXY[1]);
+
+				arrayPointM[2] = Float.valueOf(pointXYTrans[0] - bitmapPoint.getWidth()
+						* arrayPointM[0] / 2);
+				arrayPointM[5] = Float.valueOf(pointXYTrans[1]
+						- bitmapPoint.getHeight() * arrayPointM[4] / 2);
+				imageViewHelper.matrixPoint.reset();
+				imageViewHelper.matrixPoint.setValues(arrayPointM);
+				imageViewPoint.setImageMatrix(imageViewHelper.matrixPoint);
+				break;
+			}
+		}
+	};
+	
+
+	private ProgressDialog pdTestingMode;
+
+	private void startTestingMode() {
+		// TODO Auto-generated method stub
+		Log.i(TAG, "startTestingMode BEGIN");
+
+		wifiReceiver = new WifiFingerPrintReceiver(this, 2);
+		registerReceiver(wifiReceiver, new IntentFilter(
+				WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+		wiFiManager.startScan();
+
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		Date dt = new Date();
+		testingModeStartTime = sdf.format(dt);
+		pdTestingMode = ProgressDialog.show(this, "",
+				"Testing mode progressing...");
+		// getActionBar().setTitle("Tesing mode...");
+	}
+
+	public void finishTestingMode(int posibilityOutOfDis2M,
+			int posibilityOutOfDis3M) {
+		Log.i(TAG, "finishTestingMode BEGIN");
+		pdTestingMode.dismiss();
+
+		if (wifiReceiver != null)
+			unregisterReceiver(wifiReceiver);
+
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		Date dt = new Date();
+		testingModeEndTime = sdf.format(dt);
+
+		String res = "BEGIN: " + testingModeStartTime + "\n" + "END: "
+				+ testingModeEndTime + "\nout of distance 2M = "
+				+ posibilityOutOfDis2M + "\n" + "out of distance 3M = "
+				+ posibilityOutOfDis3M;
+
+		Builder alertDialog = new AlertDialog.Builder(this);
+		alertDialog.setTitle("finish testing mode");
+		alertDialog.setMessage(res);
+		alertDialog.setPositiveButton("ok",
+				new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						// TODO Auto-generated method stub
-						bIsToRegular = true;
-						aryRssiToRegularLocation = rssi;
-						String strTips = "Remove point to regular, and click menu item:Regular Location \n" +
-								"New point would insert to DB";
-						Toast.makeText(position_1F.this, strTips, Toast.LENGTH_LONG).show();
 					}
 				});
 
 		alertDialog.setCancelable(false);
 		alertDialog.show();
-		
 	}
 	
-	private void regularLocation() {
-		Log.i(TAG, "regularLocation BEGIN");
-		
-		if(bIsToRegular) {
-			float[] getRssiPointXY = new float[2];
-			getRssiPointXY = imageViewHelper
-					.calNewPointPixel(imageViewHelper.matrixPoint);
-			
-			Log.i(TAG, "Regular posX= " +getRssiPointXY[0] + " posY = "+getRssiPointXY[1]);
-			
-			final WifiReferencePointVO rpVO = new WifiReferencePointVO();
-			rpVO.mPosX = Float.toString(getRssiPointXY[0]);
-			rpVO.mPosY = Float.toString(getRssiPointXY[1]);
-			rpVO.mPathNum = "0";
-			rpVO.rssiArray = aryRssiToRegularLocation;
-			
-			final WifiReferencePointProxy wifiProxy = new WifiReferencePointProxy(this);
-			wifiProxy.initDB();
-			wifiProxy.setReferencePoint(rpVO);
-			
-			bIsToRegular = false;
-		}
-		
+	private void showSiteSurveyAlert() {
+		// TODO Auto-generated method stub
+		BaseAlertView alert = new BaseAlertView(this, GlobalDataVO.NOTIFICATION_SITESURVEY);
 	}
+	
+	public void beginSiteSurvey() {
+		Log.i(TAG, "beginSiteSurvey BEGIN");
+		Toast.makeText(this, "begin site-survey on this position", Toast.LENGTH_LONG).show();
+		scanning = true;
+		startScanning();
+		actionBarProgress(true);
+	}
+	
+	public void actionBarProgress(boolean isLoading) {
+		setProgressBarIndeterminateVisibility(isLoading);
+	}
+	
+	private int getEveryStep() {
+		return mEveryStep;
+	}
+	
+	public void setEveryStep(int settingNumber) {
+		mEveryStep = settingNumber;
+	}
+
 }

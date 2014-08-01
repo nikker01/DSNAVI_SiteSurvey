@@ -6,10 +6,14 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
+import com.andvantech.dsnavi_sitesurvey.BayesClassifier;
 import com.andvantech.dsnavi_sitesurvey.RssiMeanFilter;
+import com.andvantech.dsnavi_sitesurvey.RssiStandardDeviation;
 import com.andvantech.dsnavi_sitesurvey.referencepoints.ReferencePointVO;
 import com.andvantech.dsnavi_sitesurvey.wifireferencepoint.WifiReferencePointProxy;
 import com.andvantech.dsnavi_sitesurvey.wifireferencepoint.WifiReferencePointVO;
+import com.doubleservice.knntestingmode.TestingModeProxy;
+import com.doubleservice.knntestingmode.TestingModeVO;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -30,11 +34,25 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 	private ArrayList<Integer>[] rssiGroup;
 	private ArrayList<String> mApName = new ArrayList<String>();
 	private int[] mApScanRssi;
+	private double[] mApScanSD;
 	
 	private int currentScanCount = 0;
 	private int maxScanCount = 0;
+	private int testingModeScanCount = 0;
+	
+	private float maxDistance3M = 120;
+	private float maxDistance2M = 80;
+	private int maxTestCount = 100;
 	
 	private ArrayList<HashMap> scanDataList;
+	//private ArrayList<HashMap> onReceiveData;
+	private int[] onReceiveData;
+	private ArrayList<float[]> aryPointXY = new ArrayList<float[]>();
+	
+	private int outOfDistanceCount2M = 0; 
+	private int outOfDistanceCount3M = 0; 
+	
+	private boolean bIsPointScanningDone = false;
 
 	public WifiFingerPrintReceiver(position_1F activity, int functionName) {
 		this.act = activity;
@@ -43,6 +61,7 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 		mApName = WifiReferencePointVO.aryApList;
 		rssiGroup = (ArrayList<Integer>[]) new ArrayList[mApName.size()];
 		mApScanRssi = new int[mApName.size()];
+		mApScanSD = new double[mApName.size()];
 
 		for (int i = 0; i < WifiReferencePointVO.aryApList.size(); i++) {
 			rssiGroup[i] = new ArrayList<Integer>();
@@ -50,6 +69,8 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 		
 		mFunctioName = functionName;
 		scanDataList = new ArrayList<HashMap>();
+		//onReceiveData = new ArrayList<HashMap>();
+		onReceiveData = new int[WifiReferencePointVO.aryApList.size()];
 	}
 
 	@Override
@@ -60,49 +81,135 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 
 		List<ScanResult> results = act.wiFiManager.getScanResults();
 		for (ScanResult result : results) {
-			// result.timestamp= 100;
+			HashMap<String, Integer> map = new HashMap<String, Integer>();
 			
 			String point = result.BSSID.toString();
 			//Log.i(TAG, "MAC of the AP= " +point);
-
-			//if(point.equals(object))
 			
 			if (result.level < -20) {
 				try {
 					int idx = mApName.indexOf(point);
+					onReceiveData[idx] = result.level;
 					rssiGroup[idx].add(result.level);
-					//Log.i(TAG, "MAC of the AP =" +point);
+					Log.i(TAG, "MAC of the AP =" +point);
+					map.put(point, result.level);
+					//onReceiveData.add(map);
 				} catch (Exception e) {
-					//e.printStackTrace();
 				}
 			}
 		}
 		
 		if(mFunctioName == FUNCTION_SITESURVEY) {
-			maxScanCount = 3;
+			maxScanCount = 2;
 			if(currentScanCount >= maxScanCount){
+				bIsPointScanningDone = true;
 				calculateMeanRssi();
+				calculateStandarDeviation();
 				clearRssiArray();
-				act.setSiteSurveyRssiData(mApScanRssi);
+				act.setSiteSurveyRssiData(mApScanRssi, bIsPointScanningDone);
+				//act.setSiteSurveyRssiData(mApScanRssi, mApScanSD);
 			} else {
+				bIsPointScanningDone = false;
+				//act.setSiteSurveyRssiData(onReceiveData, bIsPointScanningDone);
 				act.wiFiManager.startScan();
 			}
 			
 		} else if(mFunctioName == FUNCTION_LOCATION) {
-			maxScanCount = 1;
+			maxScanCount = 2;
 			if(currentScanCount >= maxScanCount){
 				calculateMeanRssi();
 				clearRssiArray();
-				
-				queryNearestDistance(mApScanRssi);
-				
-				//act.setCurrentLocationRssi(mApScanRssi);
+				//queryNearestDistance(mApScanRssi);
+				act.setCurrentLocationRssi(mApScanRssi, scanDataList);
 			} else {
 				act.wiFiManager.startScan();
 			}
-		} 
-	}
+		} else if(mFunctioName == FUNCTION_TESTING) {
+			maxScanCount = 2;
 	
+			if(currentScanCount >= maxScanCount) {
+				calculateMeanRssi();
+				clearRssiArray();
+				setTestingData(mApScanRssi);
+			} else {
+				act.wiFiManager.startScan();
+			}
+		}
+	}
+
+	private void setTestingData(int rssi[]) {
+		// TODO Auto-generated method stub
+		Log.i(TAG, "setTestingData BEGIN");
+		testingModeScanCount++;
+		currentScanCount = 0;
+		
+		TestingModeProxy tmProxy = new TestingModeProxy(act);
+		tmProxy.initDB();
+		
+		WifiReferencePointProxy proxy = new WifiReferencePointProxy(act);
+		proxy.initDB();
+		ArrayList<HashMap> list = new ArrayList<HashMap>();
+		list = proxy.queryReferencePointDis(scanDataList);
+		
+		Collections.sort(list, new Comparator<HashMap>() {
+			@Override
+			public int compare(HashMap lhs, HashMap rhs) {
+				// TODO Auto-generated method stub
+				
+				return (Integer) rhs.get(WifiReferencePointVO.DISTANCE) == (Integer) lhs
+						.get(WifiReferencePointVO.DISTANCE) ? 0 :
+							((Integer) rhs.get(WifiReferencePointVO.DISTANCE) < (Integer) lhs
+									.get(WifiReferencePointVO.DISTANCE) ? 1 : -1);
+			}
+		});
+		
+		float newPositionX = (
+				Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.POSITION_X)) +
+				Float.parseFloat((String) list.get(1).get(WifiReferencePointVO.POSITION_X)) + 
+				Float.parseFloat((String) list.get(2).get(WifiReferencePointVO.POSITION_X)) 
+				) / 3;
+		float newPositionY = (
+				Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.POSITION_Y)) + 
+				Float.parseFloat((String) list.get(1).get(WifiReferencePointVO.POSITION_Y)) + 
+				Float.parseFloat((String) list.get(2).get(WifiReferencePointVO.POSITION_Y))
+				) / 3;
+		
+		float dis = (float) Math.sqrt((Math.pow((newPositionX-WifiReferencePointVO.lastPosX), 2) +
+						(Math.pow((newPositionY-WifiReferencePointVO.lastPosY), 2)) ));
+		
+		Log.i(TAG, "Distance between last and current point = " +dis);
+		
+		TestingModeVO tmVO = new TestingModeVO();
+		tmVO.mPosX = Float.toString(newPositionX);
+		tmVO.mPosY = Float.toString(newPositionY);
+		tmVO.mDis = Float.toString(dis);
+		if(dis > maxDistance2M) {
+			tmVO.mPosJump2M = "Y";
+		} else tmVO.mPosJump2M = "N";
+		
+		if(dis > maxDistance3M) {
+			tmVO.mPosJump3M = "Y";
+		} else tmVO.mPosJump3M = "N";
+		
+		tmProxy.setTestingData(tmVO);
+		
+		if(testingModeScanCount >= maxTestCount) {
+			tmProxy.closeDbAndCursor();
+			getTestingModeRes();
+			act.finishTestingMode(outOfDistanceCount2M, outOfDistanceCount3M);
+		} else {
+			act.wiFiManager.startScan();
+		}
+	}
+
+	private void getTestingModeRes() {
+		// TODO Auto-generated method stub
+		TestingModeProxy tmProxy = new TestingModeProxy(act);
+		tmProxy.initDB();
+		outOfDistanceCount2M = tmProxy.queryOutOfDistance("2M");
+		outOfDistanceCount3M = tmProxy.queryOutOfDistance("3M");
+	}
+
 	private void queryNearestDistance(int rssi[]) {
 		Log.i(TAG, "queryNearestDistance BEGIN");
 		
@@ -128,6 +235,28 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 			}
 		});
 		
+		/*
+		int knnSample = 3;
+		double mPosibility = -1;
+		int knnNo = 0;
+		for(int i = 0; i < knnSample; i++) {
+			BayesClassifier bayes = new BayesClassifier(list.get(i), scanDataList);
+			double res = bayes.getLocationPosibility();
+			if(res > mPosibility) {
+				mPosibility = res;
+				knnNo = i;
+			}
+		}
+		
+		Log.i(TAG, "The most suitable knn is no" +knnNo + ", Pos = "+mPosibility);
+		*/
+		//using Bayes algorithm to get positionX, Y
+		/*
+		float newPositionX = Float.parseFloat((String) list.get(knnNo).get(WifiReferencePointVO.POSITION_X));
+		float newPositionY = Float.parseFloat((String) list.get(knnNo).get(WifiReferencePointVO.POSITION_Y));
+		*/
+		
+		//using knn algorithm to get positionX, Y
 		float newPositionX = (
 				Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.POSITION_X)) +
 				Float.parseFloat((String) list.get(1).get(WifiReferencePointVO.POSITION_X)) + 
@@ -138,6 +267,9 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 				Float.parseFloat((String) list.get(1).get(WifiReferencePointVO.POSITION_Y)) + 
 				Float.parseFloat((String) list.get(2).get(WifiReferencePointVO.POSITION_Y))
 				) / 3;
+		
+		WifiReferencePointVO.lastPosX = newPositionX;
+		WifiReferencePointVO.lastPosY = newPositionY;
 		
 		double x0_x1 =  Math.pow(
 		Float.parseFloat((String) list.get(0).get(WifiReferencePointVO.POSITION_X)) - 
@@ -177,13 +309,25 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 		Log.i(TAG, "" +res);
 		Log.i(TAG, "on Line: " +mOnLine);
 		
-		act.setCurrentLocation(newPositionX, newPositionY, rssi, mOnLine);
+		act.setCurrentLocation(newPositionX, newPositionY, rssi);
+		
 	}
 
 	private void clearRssiArray() {
 		// TODO Auto-generated method stub
 		for (int apCount = 0; apCount < mApName.size(); apCount++) {
 			rssiGroup[apCount].clear();
+		}
+	}
+	
+	private void calculateStandarDeviation() {
+		// TODO Auto-generated method stub
+		for (int apCount = 0; apCount < mApName.size(); apCount++) {
+			RssiStandardDeviation filter = new RssiStandardDeviation(rssiGroup[apCount]);
+			mApScanSD[apCount] = filter.getStandardDeviation();
+			
+			Log.i(TAG, "calculateStandarDeviation " + mApName.get(apCount)
+					+ " RSSI SD = " + mApScanSD[apCount]);
 		}
 	}
 
@@ -197,7 +341,7 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 			Log.i(TAG, "calculateBeaconMeanRssi " + mApName.get(apCount)
 					+ " Avg RSSI = " + mApScanRssi[apCount]);
 			
-			if(mFunctioName == FUNCTION_LOCATION) {
+			if(mFunctioName == FUNCTION_LOCATION || mFunctioName == FUNCTION_TESTING) {
 				HashMap<String, Object> map = new HashMap<String, Object>();
 				String apMac = "AP_" + mApName.get(apCount).toString().replace(":", "_");
 				map.put("AP_BSSID", apMac);
@@ -207,4 +351,5 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 			}
 		}
 	}
+	
 }
