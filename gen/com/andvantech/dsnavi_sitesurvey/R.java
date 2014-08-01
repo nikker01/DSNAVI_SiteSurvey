@@ -46,9 +46,8 @@ public final class R {
         public static final int point=0x7f020016;
     }
     public static final class id {
-        public static final int action_getposition=0x7f08001c;
-        public static final int action_regular_location=0x7f08001e;
-        public static final int action_testing_mode=0x7f08001d;
+        public static final int action_getposition=0x7f08001d;
+        public static final int action_setting_step=0x7f08001e;
         public static final int bottom_linear=0x7f08000a;
         public static final int btnAddPoint=0x7f08000c;
         public static final int btnEditModeSwitch=0x7f08000b;
@@ -60,6 +59,7 @@ public final class R {
         public static final int btn_lang=0x7f08001f;
         public static final int btn_setting=0x7f080021;
         public static final int buttonObj=0x7f080000;
+        public static final int editText1=0x7f08001b;
         public static final int editText_IP=0x7f080004;
         public static final int enUSBtn=0x7f080001;
         public static final int imageView=0x7f080006;
@@ -78,7 +78,7 @@ public final class R {
         public static final int textView7=0x7f080019;
         public static final int textView8=0x7f08001a;
         public static final int top_textview=0x7f080009;
-        public static final int tv_text=0x7f08001b;
+        public static final int tv_text=0x7f08001c;
         public static final int zhTwBtn=0x7f080002;
     }
     public static final class layout {
@@ -89,8 +89,9 @@ public final class R {
         public static final int position1f=0x7f030004;
         public static final int rssi0_scan_page=0x7f030005;
         public static final int spinner_item=0x7f030006;
-        public static final int switch_lang_view=0x7f030007;
-        public static final int text=0x7f030008;
+        public static final int step_setting=0x7f030007;
+        public static final int switch_lang_view=0x7f030008;
+        public static final int text=0x7f030009;
     }
     public static final class menu {
         public static final int main=0x7f070000;
@@ -120,6 +121,11 @@ about us dialog
         public static final int btn_english=0x7f050036;
         public static final int btn_scan=0x7f050031;
         public static final int btn_skip=0x7f050032;
+        public static final int dialog_btn_cancel=0x7f05003b;
+        public static final int dialog_btn_confirm=0x7f05003a;
+        public static final int dialog_msg_tip_nextstep=0x7f05003e;
+        public static final int dialog_msg_tip_skip=0x7f05003d;
+        public static final int dialog_title_tip=0x7f05003c;
         public static final int dialog_wifi_alert_cancel=0x7f050008;
         public static final int dialog_wifi_alert_confirm=0x7f050007;
         public static final int dialog_wifi_alert_selectedtitle=0x7f050005;
