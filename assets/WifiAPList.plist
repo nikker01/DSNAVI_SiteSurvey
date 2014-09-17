@@ -10,10 +10,16 @@
 			<dict>
 				<key>MacAddress</key>
 				<array>
-					<string>54:d0:ed:a1:54:e8</string>
+					<string>6c:f3:7f:13:85:34</string>
+					<string>00:24:01:d1:00:26</string>
+					<string>1c:7e:e5:94:03:82</string>
+					<string>00:1d:73:2d:b5:68</string>
+					<string>6c:f3:7f:13:84:30</string>
+					<string>6c:f3:7f:13:85:30</string>
 					<string>6c:f3:7f:13:84:38</string>
-					<string>6c:f3:7f:13:85:38</string>
+					<string>6c:f3:7f:db:90:60</string>
 					<string>6c:f3:7f:db:90:68</string>
+					<string>6c:f3:7f:13:85:38</string>
 				</array>
 			</dict>
 		</dict>

@@ -6,7 +6,7 @@ import android.provider.BaseColumns;
 
 public class WifiReferencePointVO implements BaseColumns{
 
-	public final static String DBName = "/sdcard/referencepoint_db.db";
+	public final static String DBName = "/sdcard/sg_wifi_referencepoint_db_0912.db";
 	public final static String TABLE_NAME = "Reference_Points";
 	public final static String DISTANCE = "_DISTANCE";
 	public final static String PATH_NUMBER = "_PATH_NUMBER";

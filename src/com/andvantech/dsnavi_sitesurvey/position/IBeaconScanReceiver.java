@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.andvantech.dsnavi_sitesurvey.RssiMeanFilter;
-import com.andvantech.dsnavi_sitesurvey.referencepoints.ReferencePointVO;
+import com.andvantech.dsnavi_sitesurvey.wifireferencepoint.WifiReferencePointVO;
 import com.radiusnetworks.ibeacon.IBeacon;
 
 import android.content.BroadcastReceiver;
@@ -17,8 +17,11 @@ import android.util.Log;
 public class IBeaconScanReceiver extends BroadcastReceiver{
 
 	private String TAG = "IBeaconScanReceiver";
+	private ArrayList<HashMap> scanDataList;
 	private ArrayList<Integer>[] rssiGroup;  //= (ArrayList<Integer>[]) new ArrayList[4];
-	private ArrayList<String> myBeaconName = new ArrayList<String>();
+	private ArrayList<String> mApName = new ArrayList<String>();
+	private int[] mApScanRssi;
+	//private ArrayList<String> myBeaconName = new ArrayList<String>();
 	//private String[] myBeaconName = new String[] { "0_1", "1_0", "2_0", "1_1" };
 	private int[] iBeaconRssi; // = new int[] { 0, 0, 0, 0 };
 	private int maxScanCount = 5;
@@ -26,6 +29,7 @@ public class IBeaconScanReceiver extends BroadcastReceiver{
 	private static int FUNCTION_SITESURVEY = 0;
 	private static int FUNCTION_LOCATION = 1;
 	private int mFunctioName;
+	private boolean bIsPointScanningDone = false;
 	
 	private ArrayList<HashMap> list;
 	
@@ -34,17 +38,18 @@ public class IBeaconScanReceiver extends BroadcastReceiver{
 	public IBeaconScanReceiver(position_1F act, int functionName) {
 		this.mActivity = act;
 		
-		myBeaconName = ReferencePointVO.aryBeaconList;
-		rssiGroup = (ArrayList<Integer>[]) new ArrayList[myBeaconName.size()]; 
-		iBeaconRssi = new int[myBeaconName.size()];
+		mApName = WifiReferencePointVO.aryApList;
+		rssiGroup = (ArrayList<Integer>[]) new ArrayList[mApName.size()]; 
+		mApScanRssi = new int[mApName.size()];
 		
-		for (int i = 0; i < ReferencePointVO.aryBeaconList.size(); i++) {
+		for (int i = 0; i < WifiReferencePointVO.aryApList.size(); i++) {
 			rssiGroup[i] = new ArrayList<Integer>();
 		}
 		
 		mFunctioName = functionName;
 		
 		list = new ArrayList<HashMap>();
+		scanDataList = new ArrayList<HashMap>();
 	}
 	
 	@Override
@@ -83,7 +88,7 @@ public class IBeaconScanReceiver extends BroadcastReceiver{
 	
 				try {
 					
-					int idx = myBeaconName.indexOf(point);
+					int idx = mApName.indexOf(point);
 					if (localIBeacon.getRssi() < -40)
 						rssiGroup[idx].add(localIBeacon.getRssi());
 					
@@ -102,32 +107,70 @@ public class IBeaconScanReceiver extends BroadcastReceiver{
 		if(mFunctioName == FUNCTION_SITESURVEY) {
 			maxScanCount = 5;
 			if(mScanCount >= maxScanCount) {
-				finishScanning();
+				bIsPointScanningDone = true;
+				calculateMeanRssi();
+				clearRssiArray();
+				mActivity.setSiteSurveyRssiData(mApScanRssi, bIsPointScanningDone);
+				//finishScanning();
+			} else {
+				bIsPointScanningDone = false;
 			}
+			
 		} else if(mFunctioName == FUNCTION_LOCATION) {
 			maxScanCount = 3;
 			if(mScanCount >= maxScanCount) {
-				calculateBeaconMeanRssi();
+				calculateMeanRssi();
 				clearBeaconRssiArray();
-				mActivity.setCurrentFingerPrint(iBeaconRssi);
+				mActivity.setCurrentLocationRssi(mApScanRssi, scanDataList);
+				//mActivity.setCurrentFingerPrint(iBeaconRssi);
 			}
 		}
 		
 	}
-
-	private void finishScanning() {
+	
+	private void clearRssiArray() {
 		// TODO Auto-generated method stub
-		Log.i(TAG, "finishScanning BEGIN");
-		
-		calculateBeaconMeanRssi();
-		clearBeaconRssiArray();
-		mActivity.setBeaconData(iBeaconRssi);
-		//mActivity.siteSurveyMoving();
-		
+		for (int apCount = 0; apCount < mApName.size(); apCount++) {
+			rssiGroup[apCount].clear();
+		}
 	}
 
-	private void calculateBeaconMeanRssi() {
+	
+	private void calculateMeanRssi() {
 		// TODO Auto-generated method stub
+		
+		String mLocationApDetail = "";
+		
+		for (int apCount = 0; apCount < mApName.size(); apCount++) {
+			RssiMeanFilter meanFilter = new RssiMeanFilter(rssiGroup[apCount]);
+			mApScanRssi[apCount] = meanFilter.getMean();
+			if(mApScanRssi[apCount] == 0) {
+				mApScanRssi[apCount] = -999;
+			}
+			String ap = mApName.get(apCount).replace("_", ":");
+
+			Log.i(TAG, "calculateBeaconMeanRssi " + mApName.get(apCount)
+					+ " Avg RSSI = " + mApScanRssi[apCount]);
+			
+			mLocationApDetail = mLocationApDetail + 
+					ap +","+mApScanRssi[apCount]+";";
+			Log.i(TAG, "mLocationApDetail = " +mLocationApDetail);
+			
+			if(mFunctioName == FUNCTION_LOCATION) {
+				//if(mApScanRssi[apCount] != 0) {
+					HashMap<String, Object> map = new HashMap<String, Object>();
+					String apMac = "AP_" + mApName.get(apCount).toString().replace(":", "_");
+					map.put("AP_BSSID", apMac);
+					map.put("AP_RSSI", mApScanRssi[apCount]);
+					//map.put("IBeacon_RSSI", value)
+					scanDataList.add(map);
+				//}
+				
+			}
+		}
+		
+		
+		/*
 		for (int apCount = 0; apCount < myBeaconName.size(); apCount++) {
 
 			RssiMeanFilter meanFilter = new RssiMeanFilter(rssiGroup[apCount]);
@@ -143,11 +186,12 @@ public class IBeaconScanReceiver extends BroadcastReceiver{
 			}
 			
 		}
+		*/
 	}
 	
 	private void clearBeaconRssiArray() {
 		// TODO Auto-generated method stub
-		for (int apCount = 0; apCount < myBeaconName.size(); apCount++) {
+		for (int apCount = 0; apCount < mApName.size(); apCount++) {
 			rssiGroup[apCount].clear();
 		}
 	}

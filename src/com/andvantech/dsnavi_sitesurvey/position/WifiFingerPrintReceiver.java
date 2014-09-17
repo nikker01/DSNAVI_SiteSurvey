@@ -86,7 +86,7 @@ public class WifiFingerPrintReceiver extends BroadcastReceiver {
 			String point = result.BSSID.toString();
 			//Log.i(TAG, "MAC of the AP= " +point);
 			
-			if (result.level < -20) {
+			if (result.level < -20 ) {
 				try {
 					int idx = mApName.indexOf(point);
 					onReceiveData[idx] = result.level;
